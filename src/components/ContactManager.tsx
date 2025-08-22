@@ -1,93 +1,87 @@
 import React, { useState } from 'react';
 import { Plus, Phone, MessageCircle, Edit, Trash2, User, Shield } from 'lucide-react';
-
-interface EmergencyContact {
-  id: string;
-  name: string;
-  phone: string;
-  relationship: string;
-  isPrimary: boolean;
-}
+import { useContacts } from '../contexts/ContactContext';
 
 const ContactManager: React.FC = () => {
-  const [contacts, setContacts] = useState<EmergencyContact[]>([
-    {
-      id: '1',
-      name: 'John Doe',
-      phone: '+1 (555) 123-4567',
-      relationship: 'Spouse',
-      isPrimary: true,
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      phone: '+1 (555) 987-6543',
-      relationship: 'Sibling',
-      isPrimary: false,
-    },
-  ]);
+  const { contacts, loading, addContact, updateContact, deleteContact, setPrimaryContact } = useContacts();
 
   const [showForm, setShowForm] = useState(false);
-  const [editingContact, setEditingContact] = useState<EmergencyContact | null>(null);
+  const [editingContact, setEditingContact] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     relationship: '',
-    isPrimary: false,
+    is_primary: false,
   });
+  const [saving, setSaving] = useState(false);
 
   const handleAddContact = () => {
     setShowForm(true);
     setEditingContact(null);
-    setFormData({ name: '', phone: '', relationship: '', isPrimary: false });
+    setFormData({ name: '', phone: '', relationship: '', is_primary: false });
   };
 
-  const handleEditContact = (contact: EmergencyContact) => {
+  const handleEditContact = (contact: any) => {
     setShowForm(true);
     setEditingContact(contact);
     setFormData({
       name: contact.name,
       phone: contact.phone,
       relationship: contact.relationship,
-      isPrimary: contact.isPrimary,
+      is_primary: contact.is_primary,
     });
   };
 
-  const handleSaveContact = () => {
+  const handleSaveContact = async () => {
     if (!formData.name || !formData.phone) return;
 
-    if (editingContact) {
-      // Edit existing contact
-      setContacts(prev => prev.map(contact =>
-        contact.id === editingContact.id
-          ? { ...contact, ...formData }
-          : contact
-      ));
-    } else {
-      // Add new contact
-      const newContact: EmergencyContact = {
-        id: Date.now().toString(),
-        ...formData,
-      };
-      setContacts(prev => [...prev, newContact]);
+    setSaving(true);
+    try {
+      if (editingContact) {
+        await updateContact(editingContact.id, formData);
+      } else {
+        await addContact(formData);
+      }
+      setShowForm(false);
+      setEditingContact(null);
+    } catch (error) {
+      console.error('Failed to save contact:', error);
+      alert('Failed to save contact. Please try again.');
+    } finally {
+      setSaving(false);
     }
-
-    setShowForm(false);
-    setEditingContact(null);
   };
 
-  const handleDeleteContact = (id: string) => {
+  const handleDeleteContact = async (id: string) => {
     if (confirm('Are you sure you want to delete this contact?')) {
-      setContacts(prev => prev.filter(contact => contact.id !== id));
+      try {
+        await deleteContact(id);
+      } catch (error) {
+        console.error('Failed to delete contact:', error);
+        alert('Failed to delete contact. Please try again.');
+      }
     }
   };
 
-  const handleSetPrimary = (id: string) => {
-    setContacts(prev => prev.map(contact => ({
-      ...contact,
-      isPrimary: contact.id === id,
-    })));
+  const handleSetPrimary = async (id: string) => {
+    try {
+      await setPrimaryContact(id);
+    } catch (error) {
+      console.error('Failed to set primary contact:', error);
+      alert('Failed to set primary contact. Please try again.');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading contacts...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (showForm) {
     return (
@@ -154,12 +148,12 @@ const ContactManager: React.FC = () => {
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
-                id="isPrimary"
-                checked={formData.isPrimary}
-                onChange={(e) => setFormData(prev => ({ ...prev, isPrimary: e.target.checked }))}
+                id="is_primary"
+                checked={formData.is_primary}
+                onChange={(e) => setFormData(prev => ({ ...prev, is_primary: e.target.checked }))}
                 className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
-              <label htmlFor="isPrimary" className="text-sm font-medium text-slate-700">
+              <label htmlFor="is_primary" className="text-sm font-medium text-slate-700">
                 Set as primary emergency contact
               </label>
             </div>
@@ -168,9 +162,16 @@ const ContactManager: React.FC = () => {
           <button
             onClick={handleSaveContact}
             disabled={!formData.name || !formData.phone}
-            className="w-full mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200"
+            className="w-full mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center"
           >
-            {editingContact ? 'Update Contact' : 'Add Contact'}
+            {saving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                {editingContact ? 'Updating...' : 'Adding...'}
+              </>
+            ) : (
+              <span>{editingContact ? 'Update Contact' : 'Add Contact'}</span>
+            )}
           </button>
         </div>
       </div>
@@ -214,9 +215,9 @@ const ContactManager: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    contact.isPrimary ? 'bg-red-100' : 'bg-slate-100'
+                    contact.is_primary ? 'bg-red-100' : 'bg-slate-100'
                   }`}>
-                    {contact.isPrimary ? (
+                    {contact.is_primary ? (
                       <Shield className="w-5 h-5 text-red-600" />
                     ) : (
                       <User className="w-5 h-5 text-slate-600" />
@@ -225,7 +226,7 @@ const ContactManager: React.FC = () => {
                   <div>
                     <div className="flex items-center space-x-2">
                       <h3 className="font-semibold text-slate-800">{contact.name}</h3>
-                      {contact.isPrimary && (
+                      {contact.is_primary && (
                         <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
                           Primary
                         </span>
@@ -264,7 +265,7 @@ const ContactManager: React.FC = () => {
                 </div>
               </div>
 
-              {!contact.isPrimary && (
+              {!contact.is_primary && (
                 <div className="mt-3 pt-3 border-t border-slate-200">
                   <button
                     onClick={() => handleSetPrimary(contact.id)}

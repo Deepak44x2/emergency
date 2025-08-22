@@ -1,72 +1,83 @@
 import React, { useState } from 'react';
 import { User, Heart, Pill, AlertCircle, Edit, Save } from 'lucide-react';
-
-interface MedicalInfo {
-  bloodType: string;
-  allergies: string[];
-  medications: string[];
-  conditions: string[];
-  emergencyNotes: string;
-}
-
-interface PersonalInfo {
-  name: string;
-  age: string;
-  emergencyId: string;
-}
+import { useProfile } from '../contexts/ProfileContext';
+import { useAuth } from '../hooks/useAuth';
 
 const EmergencyProfile: React.FC = () => {
+  const { profile, loading, updateProfile, createProfile } = useProfile();
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [personalInfo, setPersonalInfo] = useState<PersonalInfo>({
-    name: 'John Doe',
-    age: '35',
-    emergencyId: 'EMR-2024-001',
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: profile?.full_name || '',
+    age: profile?.age || null,
+    blood_type: profile?.blood_type || '',
+    allergies: profile?.allergies || [],
+    medications: profile?.medications || [],
+    medical_conditions: profile?.medical_conditions || [],
+    emergency_notes: profile?.emergency_notes || '',
   });
-
-  const [medicalInfo, setMedicalInfo] = useState<MedicalInfo>({
-    bloodType: 'O+',
-    allergies: ['Peanuts', 'Penicillin'],
-    medications: ['Aspirin 81mg daily'],
-    conditions: ['Hypertension'],
-    emergencyNotes: 'Wear glasses for reading',
-  });
-
-  const [tempMedical, setTempMedical] = useState<MedicalInfo>(medicalInfo);
-  const [tempPersonal, setTempPersonal] = useState<PersonalInfo>(personalInfo);
 
   const handleEdit = () => {
     setIsEditing(true);
-    setTempMedical(medicalInfo);
-    setTempPersonal(personalInfo);
+    setFormData({
+      full_name: profile?.full_name || '',
+      age: profile?.age || null,
+      blood_type: profile?.blood_type || '',
+      allergies: profile?.allergies || [],
+      medications: profile?.medications || [],
+      medical_conditions: profile?.medical_conditions || [],
+      emergency_notes: profile?.emergency_notes || '',
+    });
   };
 
-  const handleSave = () => {
-    setMedicalInfo(tempMedical);
-    setPersonalInfo(tempPersonal);
-    setIsEditing(false);
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      if (profile) {
+        await updateProfile(formData);
+      } else {
+        await createProfile(formData);
+      }
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to save profile:', error);
+      alert('Failed to save profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
-    setTempMedical(medicalInfo);
-    setTempPersonal(personalInfo);
     setIsEditing(false);
   };
 
-  const addItem = (category: 'allergies' | 'medications' | 'conditions', value: string) => {
+  const addItem = (category: 'allergies' | 'medications' | 'medical_conditions', value: string) => {
     if (value.trim()) {
-      setTempMedical(prev => ({
+      setFormData(prev => ({
         ...prev,
         [category]: [...prev[category], value.trim()],
       }));
     }
   };
 
-  const removeItem = (category: 'allergies' | 'medications' | 'conditions', index: number) => {
-    setTempMedical(prev => ({
+  const removeItem = (category: 'allergies' | 'medications' | 'medical_conditions', index: number) => {
+    setFormData(prev => ({
       ...prev,
       [category]: prev[category].filter((_, i) => i !== index),
     }));
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -93,10 +104,20 @@ const EmergencyProfile: React.FC = () => {
             </button>
             <button
               onClick={handleSave}
-              className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm"
+              disabled={saving}
+              className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white px-3 py-1 rounded-lg text-sm"
             >
-              <Save className="w-3 h-3" />
-              <span>Save</span>
+              {saving ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-3 h-3" />
+                  <span>Save</span>
+                </>
+              )}
             </button>
           </div>
         )}
@@ -117,30 +138,30 @@ const EmergencyProfile: React.FC = () => {
               {isEditing ? (
                 <input
                   type="text"
-                  value={tempPersonal.name}
-                  onChange={(e) => setTempPersonal(prev => ({ ...prev, name: e.target.value }))}
+                  value={formData.full_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               ) : (
-                <p className="text-slate-800">{personalInfo.name}</p>
+                <p className="text-slate-800">{profile?.full_name || 'Not specified'}</p>
               )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Age</label>
               {isEditing ? (
                 <input
-                  type="text"
-                  value={tempPersonal.age}
-                  onChange={(e) => setTempPersonal(prev => ({ ...prev, age: e.target.value }))}
+                  type="number"
+                  value={formData.age || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, age: e.target.value ? parseInt(e.target.value) : null }))}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               ) : (
-                <p className="text-slate-800">{personalInfo.age} years old</p>
+                <p className="text-slate-800">{profile?.age ? `${profile.age} years old` : 'Not specified'}</p>
               )}
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Emergency ID</label>
-              <p className="text-slate-600 text-sm font-mono">{personalInfo.emergencyId}</p>
+              <p className="text-slate-600 text-sm font-mono">{user?.id.slice(0, 8).toUpperCase()}</p>
             </div>
           </div>
         </div>
@@ -160,8 +181,8 @@ const EmergencyProfile: React.FC = () => {
             <label className="block text-sm font-medium text-slate-700 mb-1">Blood Type</label>
             {isEditing ? (
               <select
-                value={tempMedical.bloodType}
-                onChange={(e) => setTempMedical(prev => ({ ...prev, bloodType: e.target.value }))}
+                value={formData.blood_type}
+                onChange={(e) => setFormData(prev => ({ ...prev, blood_type: e.target.value }))}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="">Select blood type</option>
@@ -175,7 +196,7 @@ const EmergencyProfile: React.FC = () => {
                 <option value="O-">O-</option>
               </select>
             ) : (
-              <p className="text-slate-800 font-semibold">{medicalInfo.bloodType || 'Not specified'}</p>
+              <p className="text-slate-800 font-semibold">{profile?.blood_type || 'Not specified'}</p>
             )}
           </div>
 
@@ -183,7 +204,7 @@ const EmergencyProfile: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Allergies</label>
             <div className="space-y-2">
-              {(isEditing ? tempMedical.allergies : medicalInfo.allergies).map((allergy, index) => (
+              {(isEditing ? formData.allergies : profile?.allergies || []).map((allergy, index) => (
                 <div key={index} className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                   <span className="text-red-800">{allergy}</span>
                   {isEditing && (
@@ -211,7 +232,7 @@ const EmergencyProfile: React.FC = () => {
                   />
                 </div>
               )}
-              {(!isEditing && medicalInfo.allergies.length === 0) && (
+              {(!isEditing && (!profile?.allergies || profile.allergies.length === 0)) && (
                 <p className="text-slate-500 text-sm">No known allergies</p>
               )}
             </div>
@@ -221,7 +242,7 @@ const EmergencyProfile: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Current Medications</label>
             <div className="space-y-2">
-              {(isEditing ? tempMedical.medications : medicalInfo.medications).map((medication, index) => (
+              {(isEditing ? formData.medications : profile?.medications || []).map((medication, index) => (
                 <div key={index} className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                   <span className="text-blue-800">{medication}</span>
                   {isEditing && (
@@ -249,7 +270,7 @@ const EmergencyProfile: React.FC = () => {
                   />
                 </div>
               )}
-              {(!isEditing && medicalInfo.medications.length === 0) && (
+              {(!isEditing && (!profile?.medications || profile.medications.length === 0)) && (
                 <p className="text-slate-500 text-sm">No current medications</p>
               )}
             </div>
@@ -259,12 +280,12 @@ const EmergencyProfile: React.FC = () => {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Medical Conditions</label>
             <div className="space-y-2">
-              {(isEditing ? tempMedical.conditions : medicalInfo.conditions).map((condition, index) => (
+              {(isEditing ? formData.medical_conditions : profile?.medical_conditions || []).map((condition, index) => (
                 <div key={index} className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                   <span className="text-amber-800">{condition}</span>
                   {isEditing && (
                     <button
-                      onClick={() => removeItem('conditions', index)}
+                      onClick={() => removeItem('medical_conditions', index)}
                       className="text-amber-600 hover:text-amber-700 text-sm"
                     >
                       Remove
@@ -280,14 +301,14 @@ const EmergencyProfile: React.FC = () => {
                     className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
-                        addItem('conditions', e.currentTarget.value);
+                        addItem('medical_conditions', e.currentTarget.value);
                         e.currentTarget.value = '';
                       }
                     }}
                   />
                 </div>
               )}
-              {(!isEditing && medicalInfo.conditions.length === 0) && (
+              {(!isEditing && (!profile?.medical_conditions || profile.medical_conditions.length === 0)) && (
                 <p className="text-slate-500 text-sm">No known medical conditions</p>
               )}
             </div>
@@ -298,14 +319,14 @@ const EmergencyProfile: React.FC = () => {
             <label className="block text-sm font-medium text-slate-700 mb-1">Emergency Notes</label>
             {isEditing ? (
               <textarea
-                value={tempMedical.emergencyNotes}
-                onChange={(e) => setTempMedical(prev => ({ ...prev, emergencyNotes: e.target.value }))}
+                value={formData.emergency_notes}
+                onChange={(e) => setFormData(prev => ({ ...prev, emergency_notes: e.target.value }))}
                 rows={3}
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Any additional information emergency responders should know..."
               />
             ) : (
-              <p className="text-slate-800">{medicalInfo.emergencyNotes || 'No additional notes'}</p>
+              <p className="text-slate-800">{profile?.emergency_notes || 'No additional notes'}</p>
             )}
           </div>
         </div>
