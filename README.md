@@ -24,32 +24,39 @@ Messaging Service: Twilio (SMS API)
 
 Hosting/Deployment: (Add your choice, e.g., Netlify, Vercel, or Render)
 
-🚀 Getting Started
-1. Clone the Repository
-git clone https://github.com/your-username/sos-emergency-button.git
-cd sos-emergency-button
+## 🚀 Getting Started
+
+1. **Clone the repository**  
+   ```bash
+   git clone https://github.com/<your-username>/sos-emergency-button.git
+   cd sos-emergency-button
+
 
 2. Install Dependencies
-npm install
-
+   ```bash
+     npm install
+   
 3. Set Up Environment Variables
+    ```
+    Create a .env file in the root directory and add your credentials:
+       
+    REACT_APP_SUPABASE_URL=your_supabase_url
+    REACT_APP_SUPABASE_ANON_KEY=your_supabase_key
+    REACT_APP_TWILIO_ACCOUNT_SID=your_twilio_sid
+    REACT_APP_TWILIO_AUTH_TOKEN=your_twilio_auth_token
+    REACT_APP_TWILIO_PHONE_NUMBER=your_twilio_phone_number
 
-Create a .env file in the root directory and add your credentials:
 
-REACT_APP_SUPABASE_URL=your_supabase_url
-REACT_APP_SUPABASE_ANON_KEY=your_supabase_key
-REACT_APP_TWILIO_ACCOUNT_SID=your_twilio_sid
-REACT_APP_TWILIO_AUTH_TOKEN=your_twilio_auth_token
-REACT_APP_TWILIO_PHONE_NUMBER=your_twilio_phone_number
+5. Run the App
+   ```bash
+   npm start
 
-4. Run the App
-npm start
 
 
 The app will be live at http://localhost:3000
 .
 
-📸 Screenshots (Optional)
+
 
 Add screenshots/gifs here to showcase UI.
 
